@@ -168,28 +168,20 @@ def filter(db_name): #currently coded to only support one filter at a time
                 c.execute(command)
                 print(c.fetchall())
                 conn.commit()
-                break
-
-            if(queries[0] == "o"):
+            elif(queries[0] == "o"):
                 origin = queries[1]
                 command="SELECT * FROM astrodata WHERE o=\'" + origin+"\'"
                 c.execute(command)
                 print(c.fetchall())
                 conn.commit()
-                break
-
-            if(queries[0] == "mjd"):
+            elif(queries[0] == "mjd"):
                 low = queries[1]
                 high = queries[2]
                 command="SELECT * FROM astrodata WHERE mjd BETWEEN "+low+" AND "+high
                 c.execute(command)
                 print(c.fetchall())
                 conn.commit()
-                    #process query
-                break
-
-            if(queries[0] == "p"):
-                print("aaaaaaaaaa")
+            elif(queries[0] == "p"):
                 low = queries[1]
                 high = queries[2]
                 #process query
@@ -197,9 +189,7 @@ def filter(db_name): #currently coded to only support one filter at a time
                 c.execute(command)
                 print(c.fetchall())
                 conn.commit()
-                break
-
-            if(queries[0] == "dm"):
+            elif(queries[0] == "dm"):
                 low = queries[1]
                 high = queries[2]
                 #process query
@@ -207,9 +197,7 @@ def filter(db_name): #currently coded to only support one filter at a time
                 c.execute(command)
                 print(c.fetchall())
                 conn.commit()
-                break
-
-            if(queries[0] == "bins"):
+            elif(queries[0] == "bins"):
                 low = queries[1]
                 high = queries[2]
                 #process query
@@ -217,11 +205,10 @@ def filter(db_name): #currently coded to only support one filter at a time
                 c.execute(command)
                 print(c.fetchall())
                 conn.commit()
-                break
-            
             else:
                 print("Invalid query. Type 'exit' to exit to the main menu or try again with a new input.")
                 q = raw_input()
+            loop = 0
     conn.close()
 
 #for main method on command line
