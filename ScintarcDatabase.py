@@ -5,7 +5,7 @@ import sys
 import os
 from pathlib2 import Path
 import sqlite3
-from astropy.io import fits as pyfits
+from astropy.io import fits
 
 #fields
 dataSize = 0 #the number of files in the database, initialize to 0
@@ -19,11 +19,11 @@ def main():
     print("What do you want to call the database?")
     db_name = raw_input()
     make(db_name)
-    print("Your database currently contains " + str(dataSize) + " files.")
+
 
 
     while(True): #loop querying forever
-
+        print("Your database currently contains " + str(dataSize) + " files.")
         print("What would you like to do?")
         print("(load) - Load new data into the database")
         print("(filter) - Filter data with specific parameters")
@@ -61,7 +61,7 @@ def main():
 def make(db_name):
     conn=sqlite3.connect(db_name)
     c=conn.cursor()
-    
+
     #try to create a new database in that name
     try:
         c.execute("""CREATE TABLE astrodata (
@@ -73,18 +73,18 @@ def make(db_name):
                 bins integer
         )""")
         conn.commit()
-        
+
     #catch an error if there is already a database with that name
     except sqlite3.Error as e:
         print("A database named " + db_name + " already exists. Please enter another name for the database, or 'o' to overwrite the existing one.")
         str = raw_input()
-        
+
         #replace table if user wants to overwrite, but only if they are really sure
         if (str == "o"):
-            
+
             print("ARE YOU SURE you want to overwrite your database? There's no going back. Type 'yes overwrite' to proceed, or another name for your database.")
             str = raw_input()
-            
+
             if(str == "yes overwrite"):
                 c.execute("DROP TABLE IF EXISTS astrodata")
                 conn=sqlite3.connect(db_name)
@@ -106,17 +106,18 @@ def make(db_name):
 
 
 def readFile(directory):
-    hdulist = pyfits.open(directory)
-    hdulist.verify('fix')
-    header = hdulist[0].header
-    header.set('filename', os.path.basename(directory))
-    print(header)
-
-    #only sample data right now.
-    data=["B0919+06+22", "Arecibo", "53363.335636574076", "0.4305937417","27.3091", "128"]
+    f = fits.open(directory)
+    f.verify('fix')
+    header = f[0].header
+    f.close()
+    #header.set('filename', os.path.basename(filename))
+    #data, header = fits.getdata(directory, header=True)
+    ##only sample data right now.
+    data=[str(header["SOURCE"]), str(header["ORIGIN"]), str(header["MJD"]), str(header["PERIOD"]),str(header["DM"]), str(header["NBINS"])]
     return data
 
 def load(directory, db_name):
+    global dataSize
     dirpath = Path(directory)
 
     if(dirpath.is_dir()):
@@ -129,16 +130,17 @@ def load(directory, db_name):
         i=0
         print("Reading these files:")
         while(i<len(files)):
-            print("loopin")
             if "dyn.fit" not in files[i] and "dyn.fits" not in files[i]:
                 del files[i]
                 continue
             fname=directory+"/"+files[i]
             data=readFile(fname)
+            print("Added:")
             print(data)
             command="INSERT INTO astrodata VALUES("+"'"+data[0]+"', "+"'"+data[1]+"', "+data[2]+", "+data[3]+", "+data[4]+", "+data[5]+")"
             c.execute(command)
             conn.commit()
+            dataSize+=1
             i+=1
         conn.close()
 
@@ -157,7 +159,7 @@ def filter(db_name): #currently coded to only support one filter at a time
         if(q == "exit"):
             loop = 0 #stop looping, exit to main menu
         else:
-            print("oooooooooooo")
+            #print("oooooooooooo")
             queries = q.split(",")
             print(queries) #create list of parameters separated by commas
             if(queries[0] == "name"):
@@ -166,20 +168,23 @@ def filter(db_name): #currently coded to only support one filter at a time
                 #process query
                 command="SELECT * FROM astrodata WHERE name=\'"+pname+"\'"
                 c.execute(command)
-                print(c.fetchall())
+                for i in c.fetchall():
+                    print(i)
                 conn.commit()
             elif(queries[0] == "o"):
                 origin = queries[1]
                 command="SELECT * FROM astrodata WHERE o=\'" + origin+"\'"
                 c.execute(command)
-                print(c.fetchall())
+                for i in c.fetchall():
+                    print(i)
                 conn.commit()
             elif(queries[0] == "mjd"):
                 low = queries[1]
                 high = queries[2]
                 command="SELECT * FROM astrodata WHERE mjd BETWEEN "+low+" AND "+high
                 c.execute(command)
-                print(c.fetchall())
+                for i in c.fetchall():
+                    print(i)
                 conn.commit()
             elif(queries[0] == "p"):
                 low = queries[1]
@@ -187,7 +192,8 @@ def filter(db_name): #currently coded to only support one filter at a time
                 #process query
                 command="SELECT * FROM astrodata WHERE period BETWEEN "+low+" AND "+high
                 c.execute(command)
-                print(c.fetchall())
+                for i in c.fetchall():
+                    print(i)
                 conn.commit()
             elif(queries[0] == "dm"):
                 low = queries[1]
@@ -195,7 +201,8 @@ def filter(db_name): #currently coded to only support one filter at a time
                 #process query
                 command="SELECT * FROM astrodata WHERE dm BETWEEN "+low+" AND "+high
                 c.execute(command)
-                print(c.fetchall())
+                for i in c.fetchall():
+                    print(i)
                 conn.commit()
             elif(queries[0] == "bins"):
                 low = queries[1]
@@ -203,7 +210,8 @@ def filter(db_name): #currently coded to only support one filter at a time
                 #process query
                 command="SELECT * FROM astrodata WHERE bins BETWEEN "+low+" AND "+high
                 c.execute(command)
-                print(c.fetchall())
+                for i in c.fetchall():
+                    print(i)
                 conn.commit()
             else:
                 print("Invalid query. Type 'exit' to exit to the main menu or try again with a new input.")
