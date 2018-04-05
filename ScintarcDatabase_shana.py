@@ -20,65 +20,79 @@ Function to create a new empty database for storing fits files. Handles overwrit
 '''
 
 
-def make(db_name):
+def makedb(db, replace):
 
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
+    if db != "exit":
 
-    # try to create a new database in that name
-    try:
-        c.execute("""CREATE TABLE astrodata (
-            name text,
-            o text,
-            mjd real,
-            period real,
-            dm real,
-            bins integer,
-            data BLOB
-        )""")
-        conn.commit()
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
 
-    # catch an error if there is already a database with that name
-    except sqlite3.Error as e:
+        # try to create a new database in that name
+        try:
+            c.execute("""CREATE TABLE astrodata (
+                name text,
+                o text,
+                mjd real,
+                period real,
+                dm real,
+                bins integer,
+                data BLOB
+            )""")
+            conn.commit()
+            return db  # return new database name
 
-        if db_name == "exit":
-            sys.exit()
+        # catch an error if there is already a database with that name
+        except sqlite3.Error as e:
 
-        print(
-            "A database named {0} already exists. Please enter another name for the database, or \'o\' to overwrite "
-            "the existing one. \n".format(db_name))
-        str = raw_input()
-        print
+            if replace == 1:  # if replace option is true
 
-        # replace table if user wants to overwrite, but only if they are really sure
-        if str == "o":
+                print(
+                    "A database named {0} already exists. Please enter another name for the database, or \'o\' to overwrite "
+                    "the existing one. \n".format(db))
+                inp = raw_input()  # get another database name
+                print
 
-            print(
-                "ARE YOU SURE you want to overwrite your database? There's no going back. Type 'yes overwrite' to "
-                "proceed, or another name for your database.\n")
-            str = raw_input()
-            print
+                # replace table if user wants to overwrite, but only if they are really sure
+                if inp == "o":
 
-            if str == "yes overwrite":
-                c.execute("DROP TABLE IF EXISTS astrodata")
-                conn = sqlite3.connect(db_name)
-                c = conn.cursor()
-                c.execute("""CREATE TABLE astrodata (
-                    name text,
-                    o text,
-                    mjd real,
-                    period real,
-                    dm real,
-                    bins integer,
-                    data BLOB
-                )""")
-                conn.commit()
+                    print(
+                        "ARE YOU SURE you want to overwrite your database? There's no going back. Type 'yes overwrite' to "
+                        "proceed, or another name for your database.\n")
+                    newinp = raw_input()  # record string for confirmation
+                    print
+
+                    if newinp == "yes overwrite":
+                        c.execute("DROP TABLE IF EXISTS astrodata")  # remove the existing database
+                        conn = sqlite3.connect(db)  # use the original database name
+                        c = conn.cursor()
+                        c.execute("""CREATE TABLE astrodata (
+                            name text,
+                            o text,
+                            mjd real,
+                            period real,
+                            dm real,
+                            bins integer,
+                            data BLOB
+                        )""")
+                        conn.commit()
+                        return db  # return database name
+                    else:
+                        makedb(newinp,1)  # make new database using the newest (third) input
+                else:
+                    makedb(inp,1)  # make new database using second input
+
             else:
-                make()
-        else:
-            make()
 
-    conn.close()
+                print "The database already exists, and you may not overwrite any existing information right now. " \
+                      "Please enter another name."
+                print
+
+                inp = raw_input()  # get another database name
+                print
+
+                return makedb(inp, 0)
+
+        conn.close()
 
 
 '''
@@ -111,7 +125,7 @@ def load(directory):
 
     #   Check if directory is valid
     if dirpath.is_dir():
-        stime = datetime.datetime()  # start time for operation
+        stime = datetime.datetime.now()  # start time for operation
         print(".fits files will be loaded from " + directory + ".\n")
 
         # load files:
@@ -138,7 +152,7 @@ def load(directory):
             i += 1
         print "Done.\n"
         tottime = datetime.datetime.now() - stime  # elapsed time of operation
-        print "\nTotal time elapsed for adding: {0}\n".format(tottime)
+        print "Total time elapsed for adding: {0}\n".format(tottime)
         conn.close()
 
     elif directory != "exit":
@@ -155,6 +169,11 @@ Helper function to perform filtering and print out formatted values using a SQLi
 
 
 def filtprint(command):
+
+    # first row of table
+    print " Pulsar Name |    Origin    |     MJD     |   Period   |    DM    | Bins "
+    print "-------------------------------------------------------------------------"
+
     stime = datetime.datetime.now()  # start time of operation
     global db_name
     conn = sqlite3.connect(db_name)
@@ -162,18 +181,13 @@ def filtprint(command):
 
     c.execute(command)
     for i in c.fetchall():
-        print("Pulsar name: %s" % i[0])
-        print("Origin: %s" % i[1])
-        print("MJD: %.4f" % i[2])
-        print("Period: %4f" % i[3])
-        print("DM: %4f" % i[4])
-        print("Bins: %d" % i[5])
-        print
+        print(" %-12s| %-13s| %-12.4f| %-11.4f| %-9.4f| %-6d" % (i[0], i[1], i[2], i[3], i[4], i[5]))
         # test: print entire binary array into a new file to check values
         # print >> open("bin_dat.txt", "w+"), i[6]
     conn.commit()
     tottime = datetime.datetime.now() - stime  # elapsed time of operation
-    print "\nTotal time elapsed for filtering: {0}\n".format(tottime)
+    print
+    print "Total time elapsed for filtering: {0}\n".format(tottime)
 
 
 '''
@@ -190,14 +204,18 @@ def filtadd(command):
 
     print "Would you like to put the filtered data into a new database? (y to confirm)\n"
     r = raw_input()
+    print
 
     if r == "y":
-        stime = datetime.datetime.now()  # start time
+        print "Please enter a name for your new database.\n"
+        # new input for database name
+        inp = raw_input()
         print
-        newdb = db_name + "_sub_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S") # timestamp for db name
-        make(newdb)  # make the new database
 
-        # for new subdatabase
+        newdb = makedb(inp,0)  # make the new database, save newest database name in case it changed during make()
+
+        # for new database
+        stime = datetime.datetime.now()  # start time of operation
         newconn = sqlite3.connect(newdb)
         newc = newconn.cursor()
 
@@ -221,7 +239,7 @@ def filtadd(command):
         conn.close()
         print "Filtered data added into database '{0}'.\n".format(newdb)
         tottime = datetime.datetime.now() - stime  # elapsed time of operation
-        print "\nTotal time elapsed for adding: {0}\n".format(tottime)
+        print "Total time elapsed for adding: {0}\n".format(tottime)
 
 
 
@@ -306,7 +324,6 @@ def sfilter():  # currently coded to only support one filter at a time
 
                 command = command + " "
 
-        print command
         print
 
         # try to filter with the command, output error if command is incorrect
@@ -374,7 +391,8 @@ def main():
         if inp == "new":
             print("What do you want to call the database?\n")
             db_name = raw_input()
-            make(db_name)
+            print
+            makedb(db_name,1)
             print
             break
         elif inp == "con":
