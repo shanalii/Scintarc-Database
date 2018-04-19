@@ -1,5 +1,6 @@
 # A program that stores a SQLite database of pulsar dynamic spectrum data.
 # Takes user queries and behaves accordingly. [more desc here]
+from __future__ import print_function
 from __builtin__ import raw_input
 import sys
 import os
@@ -36,7 +37,8 @@ def makedb(db, replace):
                 period real,
                 dm real,
                 bins integer,
-                data BLOB
+                data BLOB,
+                unique (name, o, mjd, period, dm, bins, data)
             )""")
             conn.commit()
             return db  # return new database name
@@ -50,7 +52,7 @@ def makedb(db, replace):
                     "A database named {0} already exists. Please enter another name for the database, or \'o\' to overwrite "
                     "the existing one. \n".format(db))
                 inp = raw_input()  # get another database name
-                print
+                print()
 
                 # replace table if user wants to overwrite, but only if they are really sure
                 if inp == "o":
@@ -59,7 +61,7 @@ def makedb(db, replace):
                         "ARE YOU SURE you want to overwrite your database? There's no going back. Type 'yes overwrite' to "
                         "proceed, or another name for your database.\n")
                     newinp = raw_input()  # record string for confirmation
-                    print
+                    print()
 
                     if newinp == "yes overwrite":
                         c.execute("DROP TABLE IF EXISTS astrodata")  # remove the existing database
@@ -72,7 +74,8 @@ def makedb(db, replace):
                             period real,
                             dm real,
                             bins integer,
-                            data BLOB
+                            data BLOB,
+                            unique (name, o, mjd, period, dm, bins, data)
                         )""")
                         conn.commit()
                         return db  # return database name
@@ -83,12 +86,11 @@ def makedb(db, replace):
 
             else:
 
-                print "The database already exists, and you may not overwrite any existing information right now. " \
-                      "Please enter another name."
-                print
+                print("The database already exists, and you may not overwrite any existing information right now. " \
+                      "Please enter another name.\n")
 
                 inp = raw_input()  # get another database name
-                print
+                print()
 
                 return makedb(inp, 0)
 
@@ -121,38 +123,64 @@ information.
 
 def load(directory):
     global dataSize, db_name
+    log = open('log.txt', 'w+')  # file to log progress
     dirpath = Path(directory)
 
-    #   Check if directory is valid
-    if dirpath.is_dir():
+    #   Check if path is valid
+    if dirpath.exists():
         stime = datetime.datetime.now()  # start time for operation
         print(".fits files will be loaded from " + directory + ".\n")
+        filestoadd=[]  # list of all valid files to add to db
 
         # load files:
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
-        files = os.listdir(directory)
+        print("Finding files...\n")
 
-        print "Reading these files:"
-        for i in range(0, len(files)):
-            print("Loading {0} out of {1} files...".format(i + 1, len(files)))
-            if "dyn.fit" not in files[i] and "dyn.fits" not in files[i]:
-                del files[i]
-                continue
-            fname = directory + "/" + files[i]
-            header, data = readFile(fname)
+        # if path is a directory, walk through it and find all fits files
+        if dirpath.is_dir():
+            for root, dirs, files in os.walk(directory):
+                for file in files:
+                    if file.endswith("dyn.fit") or file.endswith("dyn.fits"):
+                        filestoadd.append(os.path.join(root, file))
 
-            # insert all header information as numerics and binary data as json object
-            command = "INSERT INTO astrodata VALUES('{0}' , '{1}' , '{2}' , '{3}' , '{4}' , '{5}' , ?)".format(header[0], header[1], header[
-                2], header[3], header[4], header[5])
-            c.execute(command, (json.dumps(data.tolist()),))
+        # otherwise, it is a file
+        elif directory.endswith("dyn.fit") or directory.endswith("dyn.fits"):
+            filestoadd.append(directory)
+
+        else:
+            print("No valid files found.")
+
+        print("{0} files found.".format(len(filestoadd)))
+        log.write("{0} files found.\n".format(len(filestoadd)))  # port to log.txt
+
+        success = 0  # counter for successful adds
+
+        for i in range(0, len(filestoadd)):
+            print("Loading {0} out of {1} files: {2}".format(i + 1, len(filestoadd), filestoadd[i]))
+            log.write("Loading {0} out of {1} files: {2}\n".format(i + 1, len(filestoadd), filestoadd[i]))  # port to log.txt
+
+            try:
+                header, data = readFile(filestoadd[i])
+                # insert all header information as numerics and binary data as json object
+                command = "INSERT INTO astrodata VALUES('{0}' , '{1}' , '{2}' , '{3}' , '{4}' , '{5}' , ?)".format(
+                    header[0], header[1], header[2], header[3], header[4], header[5])
+                c.execute(command, (json.dumps(data.tolist()),))
+                success += 1
+            except Exception as e:
+                print("Error loading file {0}: {1}".format(filestoadd[i], e.message))
+                log.write("Error loading file {0}: {1}\n".format(filestoadd[i], e.message))  # port to log.txt
 
             conn.commit()
             dataSize += 1
             i += 1
-        print "Done.\n"
+
+        print("\nDone. {0} out of {1} files added successfully. See log.txt for more information.\n"
+              .format(success, len(filestoadd)))
+        log.write("\nDone. {0} out of {1} files added successfully.\n".format(success, len(filestoadd)))  # port to log.txt
         tottime = datetime.datetime.now() - stime  # elapsed time of operation
-        print "Total time elapsed for adding: {0}\n".format(tottime)
+        print("Total time elapsed for adding: {0}\n".format(tottime))
+        log.write("Total time elapsed for adding: {0}\n".format(tottime))  # port to log.txt
         conn.close()
 
     elif directory != "exit":
@@ -161,6 +189,8 @@ def load(directory):
 
         if directory != "exit":
             load(directory)
+
+    log.close()
 
 
 '''
@@ -171,8 +201,8 @@ Helper function to perform filtering and print out formatted values using a SQLi
 def filtprint(command):
 
     # first row of table
-    print " Pulsar Name |    Origin    |     MJD     |   Period   |    DM    | Bins "
-    print "-------------------------------------------------------------------------"
+    print(" Pulsar Name |    Origin    |     MJD     |   Period   |    DM    | Bins ")
+    print("-------------------------------------------------------------------------")
 
     stime = datetime.datetime.now()  # start time of operation
     global db_name
@@ -181,13 +211,13 @@ def filtprint(command):
 
     c.execute(command)
     for i in c.fetchall():
-        print(" %-12s| %-13s| %-12.4f| %-11.4f| %-9.4f| %-6d" % (i[0], i[1], i[2], i[3], i[4], i[5]))
-        # test: print entire binary array into a new file to check values
-        # print >> open("bin_dat.txt", "w+"), i[6]
-    conn.commit()
+        try:
+            print(" %-12s| %-13s| %-12.4f| %-11.4f| %-9.4f| %-6d" % (i[0], i[1], i[2], i[3], i[4], i[5]))
+            conn.commit()
+        except Exception as e:
+            print("Error fetching information.")
     tottime = datetime.datetime.now() - stime  # elapsed time of operation
-    print
-    print "Total time elapsed for filtering: {0}\n".format(tottime)
+    print("\nTotal time elapsed for process: {0}\n".format(tottime))
 
 
 '''
@@ -202,15 +232,15 @@ def filtadd(command):
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
 
-    print "Would you like to put the filtered data into a new database? (y to confirm)\n"
+    print("Would you like to put the filtered data into a new database? (y to confirm)\n")
     r = raw_input()
-    print
+    print()
 
     if r == "y":
-        print "Please enter a name for your new database.\n"
+        print("Please enter a name for your new database.\n")
         # new input for database name
         inp = raw_input()
-        print
+        print()
 
         newdb = makedb(inp,0)  # make the new database, save newest database name in case it changed during make()
 
@@ -237,9 +267,9 @@ def filtadd(command):
 
         newconn.close()
         conn.close()
-        print "Filtered data added into database '{0}'.\n".format(newdb)
+        print("Filtered data added into database '{0}'.\n".format(newdb))
         tottime = datetime.datetime.now() - stime  # elapsed time of operation
-        print "Total time elapsed for adding: {0}\n".format(tottime)
+        print("Total time elapsed for adding: {0}\n".format(tottime))
 
 
 
@@ -251,8 +281,9 @@ Function to perform advanced filtering, with the user providing parameters in SQ
 def advfilter():
 
     try:
-        print "Please enter your filter query in advanced mode: \nSELECT * FROM database\n"
+        print("Please enter your filter query in advanced mode: \nSELECT * FROM database\n")
         r = raw_input()
+        print()
 
         if r != "exit":
             command = "SELECT * FROM astrodata " + r
@@ -268,19 +299,21 @@ def advfilter():
 def sfilter():  # currently coded to only support one filter at a time
     global db_name
 
-    print "Specify parameters to filter data. Each filter's parameters are inclusive of bounds, and should be " \
-          "separated by 'and' or 'or'."
-    print "To exclude certain parameters, type 'not' before it."
-    print "Show all entries: 'all'"
-    print "Pulsar name: 'name',(name)"
-    print "Originating observatory: 'o',(name of origin)"
-    print "MJD: 'mjd',(lower bound),(upper bound)"
-    print "Period: 'p',(lower bound),(upper bound)"
-    print "Dispersion measure: 'dm',(lower bound),(upper bound)"
-    print "Number of bins: 'bins',(lower bound),(upper bound)"
-    print
+    print("Specify parameters to filter data. Each filter's parameters are inclusive of bounds, and should be " \
+          "separated by 'and' or 'or'.")
+    print("To exclude certain parameters, type 'not' before it.")
+    print("Show all entries: 'all'")
+    print("Pulsar name: 'name',(name)")
+    print("Originating observatory: 'o',(name of origin)")
+    print("MJD: 'mjd',(lower bound),(upper bound)")
+    print("Period: 'p',(lower bound),(upper bound)")
+    print("Dispersion measure: 'dm',(lower bound),(upper bound)")
+    print("Number of bins: 'bins',(lower bound),(upper bound)")
+    print()
 
     r = raw_input()
+    print()
+
     command = ""  # sqlite command to run
     # command is in form: "param,low,high and param,value or not param,low,high" (an example)
     # the code would split the command by spaces
@@ -324,8 +357,6 @@ def sfilter():  # currently coded to only support one filter at a time
 
                 command = command + " "
 
-        print
-
         # try to filter with the command, output error if command is incorrect
         try:
             filtprint(command)
@@ -335,6 +366,19 @@ def sfilter():  # currently coded to only support one filter at a time
         except sqlite3.Error as e:
             print("\nFilter mode not recognized, try again or type 'exit' to return to main menu.\n")
             sfilter()
+
+def sort():
+
+    print("Please specify the sorting parameter:")
+    print("Pulsar name: 'name'")
+    print("Originating observatory: 'o'")
+    print("MJD: 'mjd'")
+    print("Period: 'p'")
+    print("Dispersion measure: 'dm'")
+    print("Number of bins: 'bins'")
+    print("Multiple parameters are allowed.")
+
+
 
 '''
 Function to connect to existing databases.
@@ -386,21 +430,21 @@ def main():
         print("To create a new database, enter 'new'. To connect to an existing one, enter 'con'.")
         print("At any point, enter 'exit' to exit the program.\n")
         inp = raw_input()
-        print
+        print()
 
         if inp == "new":
             print("What do you want to call the database?\n")
             db_name = raw_input()
-            print
+            print()
             makedb(db_name,1)
-            print
+            print()
             break
         elif inp == "con":
             print("Which database do you want to connect to?\n")
             db_name = raw_input()
             tmp = connect()
             db_name = tmp
-            print
+            print()
             break
         elif inp == "exit":
             print("Exiting program.\n")
@@ -410,39 +454,43 @@ def main():
 
     # loop querying forever
     while True:
-        print "Your database '{0}' currently contains {1} files.".format(db_name, str(dataSize))
-        print "What would you like to do?"
-        print "(load) - Load new data into the database"
-        print "(sf) - Filter data using simple filtering mode."
-        print "(af) - Filter data using advanced filtering mode " \
-              "(recommended for those with SQLite syntax knowledge.) "
-        print "(exit) - Exit the program\n"
+        print("Your database '{0}' currently contains {1} files.".format(db_name, str(dataSize)))
+        print("What would you like to do?")
+        print("(load) - Load new data into the database")
+        print("(sf) - Filter data using simple filtering mode.")
+        print("(af) - Filter data using advanced filtering mode "
+              "(recommended for those with SQLite syntax knowledge.) ")
+        print("(sort) - Sort data by attribute.")
+        print("(exit) - Exit the program\n")
 
         # take in user's input
         inp = raw_input()
-        print
+        print()
 
         # cases
         if inp == "load":
             print("Specify directory containing .fits files to be imported.\n")
             directory = raw_input()
-            print
+            print()
             load(directory)
 
         elif inp == "sf":
             sfilter()
-            print
+            print()
 
         elif inp == "af":
             advfilter()
-            print
+            print()
+
+        elif inp == "sort":
+            sort()
+            print()
 
         elif inp == "exit":
             sys.exit()
-            print
 
         else:
-            print "Command not valid. Please try again.\n"
+            print("Command not valid. Please try again.\n")
 
 
 # for main method on command line
