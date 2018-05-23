@@ -1,7 +1,10 @@
 # A program that stores a SQLite database of pulsar dynamic spectrum data.
 # Takes user queries and behaves accordingly. [more desc here]
-from __future__ import print_function
-from __builtin__ import raw_input
+
+# for python 2: uncomment these imports, all instances of input() must be changed to raw_input()
+#from __future__ import print_function
+#from __builtin__ import raw_input
+
 import sys
 import os
 from pathlib2 import Path
@@ -51,7 +54,7 @@ def makedb(db, replace):
                 print(
                     "A database named {0} already exists. Please enter another name for the database, or \'o\' to overwrite "
                     "the existing one. \n".format(db))
-                inp = raw_input()  # get another database name
+                inp = input()  # get another database name
                 print()
 
                 # replace table if user wants to overwrite, but only if they are really sure
@@ -60,7 +63,7 @@ def makedb(db, replace):
                     print(
                         "ARE YOU SURE you want to overwrite your database? There's no going back. Type 'yes overwrite' to "
                         "proceed, or another name for your database.\n")
-                    newinp = raw_input()  # record string for confirmation
+                    newinp = input()  # record string for confirmation
                     print()
 
                     if newinp == "yes overwrite":
@@ -89,7 +92,7 @@ def makedb(db, replace):
                 print("The database already exists, and you may not overwrite any existing information right now. " \
                       "Please enter another name.\n")
 
-                inp = raw_input()  # get another database name
+                inp = input()  # get another database name
                 print()
 
                 return makedb(inp, 0)
@@ -185,7 +188,7 @@ def load(directory):
 
     elif directory != "exit":
         print("Invalid directory. Type 'exit' to exit to the main menu or try again with a new input.\n")
-        directory = raw_input()
+        directory = input()
 
         if directory != "exit":
             load(directory)
@@ -233,13 +236,13 @@ def filtadd(command):
     c = conn.cursor()
 
     print("Would you like to put the filtered data into a new database? (y to confirm)\n")
-    r = raw_input()
+    r = input()
     print()
 
     if r == "y":
         print("Please enter a name for your new database.\n")
         # new input for database name
-        inp = raw_input()
+        inp = input()
         print()
 
         newdb = makedb(inp,0)  # make the new database, save newest database name in case it changed during make()
@@ -282,7 +285,7 @@ def advfilter():
 
     try:
         print("Please enter your filter query in advanced mode: \nSELECT * FROM database\n")
-        r = raw_input()
+        r = input()
         print()
 
         if r != "exit":
@@ -311,7 +314,7 @@ def sfilter():  # currently coded to only support one filter at a time
     print("Number of bins: 'bins',(lower bound),(upper bound)")
     print()
 
-    r = raw_input()
+    r = input()
     print()
 
     command = ""  # sqlite command to run
@@ -408,7 +411,7 @@ def connect():
         print(
             "There is no such database with the name {0}. Please enter a valid database name, or \'exit\' "
             "to quit.\n".format(db_name))
-        db_name = raw_input()
+        db_name = input()
         connect()
 
     # return name of connected database
@@ -429,19 +432,19 @@ def main():
     while True:
         print("To create a new database, enter 'new'. To connect to an existing one, enter 'con'.")
         print("At any point, enter 'exit' to exit the program.\n")
-        inp = raw_input()
+        inp = input()
         print()
 
         if inp == "new":
             print("What do you want to call the database?\n")
-            db_name = raw_input()
+            db_name = input()
             print()
             makedb(db_name,1)
             print()
             break
         elif inp == "con":
             print("Which database do you want to connect to?\n")
-            db_name = raw_input()
+            db_name = input()
             tmp = connect()
             db_name = tmp
             print()
@@ -464,13 +467,13 @@ def main():
         print("(exit) - Exit the program\n")
 
         # take in user's input
-        inp = raw_input()
+        inp = input()
         print()
 
         # cases
         if inp == "load":
             print("Specify directory containing .fits files to be imported.\n")
-            directory = raw_input()
+            directory = input()
             print()
             load(directory)
 
