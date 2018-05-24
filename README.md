@@ -13,9 +13,11 @@ A SQLite database program written in Python that stores, filters, and exports pu
 * Anaconda 2 or higher
 
 ## Technical Details
+The main() method of the program directs user input and program output at the main startup menu. Functions in charge of each option listed in the "Capabilities and Usage Instructions" are called in the main() function, and handle subsequent user queries within themselves. Each time the program is run, one database file is selected to be operated on (ie. a SQLite connection will be opened to it), whether it be a new database or an existing one. Global variables include the total number of items and the name of the database. Within the code, user queries are checked for validity then translated to SQLite commands (represented by strings) that are executed by the connection to the database.
+
+The SQLite table that is created upon the creation of a new database have columns that correspond the pulsar attributes represented by the dynamic spectra information, and each attribute is stored in SQLite in a corresponding data type: pulsar name (referred to as "name", has type text); the originating observatory name ("o", has type text); the pulsar's period ("period", has type real); the pulsar's dispersion measure ("dm", has type real); the number of bins ("bins", has type integer); the binary header information of the file ("data", has type BLOB). When a file representing a pulsar's dynamic spectrum information is stored, the information in the file will be parsed according to each column of the table, and a new row in the table is added. This means that any file lacking information in any attribute will generate an error and will not be added; this is part of "Known Issues" item 2.
 
 ## Capabilities and Usage Instructions
-
 ### Executing the Program
 The program should be run on the command line within the directory of the Python program file, like so:
 ```
@@ -46,9 +48,11 @@ In simple mode, entering "all" will display an unsorted list of all the entries 
 The menu currently has an option for sorting database entries, but it is not functional; see "Known Issues" item 1.
 
 ### Exporting Filtered Files
-After conducting a successful filtering query using either simple or advanced filtering mode, 
+After conducting a successful filtering query using either simple or advanced filtering mode, an option will arise to export the filtered items into a new database. Enter "y" to do so, or any other input to deny the option and enter another filter query. If the option is selected, a new database will be created with a user-specified name, and the results returned by the filtering query will be added to it. After this is done, the user is redirected back to the filtering menu for the original database being operated on so that another filtering command may be entered.
 
 ## Known Issues
 1. The advanced filtering mode is coded to accept any SQLite command, but currently only handles filtering by attribute. With debugging and adjustments, sorting and other commands should theoretically be functional.
+2. There are many errors documented in "logerrors.txt", and we are unsure if they are caused by the .fits/.fit files being corrupt or not representative of dynamic specra at all, or if there is something wrong in the code. See "Future Development Directions" item 1.
 
 ## Future Development Directions
+1. Dissect the errors catalogued in "logerrors.txt", and determine whether the files themselves or the program is to blame for each of the different error types.
