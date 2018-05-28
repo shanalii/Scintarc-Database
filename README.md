@@ -10,7 +10,7 @@ A SQLite database program written in Python that stores, filters, and exports pu
 ## System Requirements
 * A command line program that can run Python (eg. Unix Terminal, Microsoft Command Prompt)
 * Python 2.6 or higher (for Python 2, some changes to the code is required; instructions are included in the code itself)
-* Anaconda 2 or higher
+* [Anaconda](https://www.anaconda.com/download/) 2 or higher
 
 ## Technical Details
 The main() method of the program directs user input and program output at the main startup menu. Functions in charge of each option listed in the "Capabilities and Usage Instructions" are called in the main() function, and handle subsequent user queries within themselves. Each time the program is run, one database file is selected to be operated on (ie. a SQLite connection will be opened to it), whether it be a new database or an existing one. Global variables include the total number of items and the name of the database. Within the code, user queries are checked for validity then translated to SQLite commands (represented by strings) that are executed by the connection to the database.
@@ -56,3 +56,6 @@ After conducting a successful filtering query using either simple or advanced fi
 
 ## Future Development Directions
 1. Dissect the errors catalogued in "logerrors.txt", and determine whether the files themselves or the program is to blame for each of the different error types.
+2. Add sorting functionalities for SQLite tables (see known issues item 1).
+3. Understand [Hauke Jung's code](https://github.com/haukejung/pulsarpkg), figure out how to use it, and implement some of his key functionalities.
+4. Add plotting functionalities for dynamic spectra.
