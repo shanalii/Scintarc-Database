@@ -37,7 +37,7 @@ Entering "con" will result in a prompt for a valid name of an existing database 
 After selecting a database, there will be a menu of options for operations to perform.
 
 ### Loading Files into the Database
-To add files into the database, enter a directory containing files ending in "dyn.fits" or "dyn.fit". The program will recursively search through all contents of the directory and subdirectories, and add all the valid files within. Files that contain the same internal information as a file already in the database (duplicate data) will not be added.
+To add files into the database, enter a directory containing files ending in "dyn.fits" or "dyn.fit". The program will recursively search through all contents of the directory and subdirectories, and add all the valid files within. Files that contain the same internal information as a file already in the database (duplicate data) will not be added (the "UNIQUE constrained failed" error will occur).
 
 ### Filtering Files by Attribute
 The program supports two modes to filter the database's files by attributes of pulsars (pulsar name "p", originating observatory "o", MJD "mjd", period "p", dispersion measure "dm", number of bins "bins"): simple mode ("sf" command: accepts verbose filtering commands suited towards those not familiar with SQLite syntax), and advanced mode ("af": accepts queries made in SQLite syntax and pipes the command directly into the SQLite connection for execution, which allows for more flexibility). Filtered results are displayed in a formatted table.
